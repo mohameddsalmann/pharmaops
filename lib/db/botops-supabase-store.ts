@@ -102,17 +102,6 @@ export function getBotOpsSupabaseStore(): BotOpsStore | null {
       },
       async claimCompletion(runId, completionClientId, finalOutcome, updates) {
         try {
-          const row = runToRow({
-            ...({} as BotRun),
-            ...updates,
-            id: runId,
-            executionStatus: "completed",
-            completedAt: new Date().toISOString(),
-            finalOutcome,
-            evaluationStatus: "running",
-            completionClientId: completionClientId ?? null,
-            status: "completed",
-          } as BotRun);
           const { data, error } = await client
             .from("botops_runs")
             .update({

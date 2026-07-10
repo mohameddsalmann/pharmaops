@@ -28,10 +28,7 @@ import type {
 import { createHash } from "crypto";
 import { evaluateBotRun } from "@/lib/botops/evaluate";
 import { createSummaryRecord } from "@/lib/botops/summarize";
-import {
-  deriveEnteredFieldsFromEvents,
-  deriveExtractedFieldsFromEvents,
-} from "@/lib/botops/event-aggregation";
+import { deriveEnteredFieldsFromEvents } from "@/lib/botops/event-aggregation";
 import { getExactWorkflowSpec } from "@/lib/botops/workflow-specs/registry";
 
 // ── In-Memory Queue/Mutex for Atomic Ingestion (Final Change #6) ──
@@ -407,7 +404,7 @@ export async function completeRun(
     // Build expectedFields from the validated spec's requiredFields
     // If spec not found, evaluateBotRun handles it (returns needs_qa_review)
     // If spec hash mismatch, record integrity failure
-    let expectedFields: Record<string, string> = {};
+    const expectedFields: Record<string, string> = {};
     if (specData) {
       // Verify spec hash integrity
       if (completedRun.workflowSpecHash && completedRun.workflowSpecHash !== specData.hash) {
