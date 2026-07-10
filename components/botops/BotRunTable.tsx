@@ -5,10 +5,17 @@ import type { BotRun } from "@/lib/schemas/bot-run";
 import { formatQaDecision, formatRiskLevel, formatWorkflowType, formatPmsType } from "@/lib/utils/format";
 
 const statusBadgeClass: Record<string, string> = {
+  running: "bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30",
   completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
   failed: "bg-red-500/10 text-red-400 border-red-500/30",
   stalled: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-  needs_human_review: "bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30",
+};
+
+const evalBadgeClass: Record<string, string> = {
+  pending: "bg-navy-700/40 text-slate-400 border-navy-600",
+  running: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+  completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  failed: "bg-red-500/10 text-red-400 border-red-500/30",
 };
 
 const decisionBadgeClass: Record<string, string> = {
@@ -57,9 +64,14 @@ export function BotRunTable({ runs }: { runs: BotRun[] }) {
               <td className="px-4 py-3 text-slate-300">{formatPmsType(run.pmsType)}</td>
               <td className="px-4 py-3 font-mono-data text-slate-400">v{run.botVersion}</td>
               <td className="px-4 py-3">
-                <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadgeClass[run.status] ?? "bg-navy-700/40 text-slate-400 border-navy-600"}`}>
-                  {run.status.replace(/_/g, " ")}
+                <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadgeClass[run.executionStatus] ?? "bg-navy-700/40 text-slate-400 border-navy-600"}`}>
+                  {run.executionStatus.replace(/_/g, " ")}
                 </span>
+                {run.evaluationStatus && run.evaluationStatus !== "pending" && (
+                  <span className={`ml-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${evalBadgeClass[run.evaluationStatus] ?? "bg-navy-700/40 text-slate-400 border-navy-600"}`}>
+                    eval: {run.evaluationStatus}
+                  </span>
+                )}
               </td>
               <td className="px-4 py-3">
                 {run.overallScore !== null ? (

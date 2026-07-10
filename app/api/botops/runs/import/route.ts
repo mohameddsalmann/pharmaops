@@ -62,6 +62,9 @@ export async function POST(req: NextRequest) {
       workflowSpecVersion: data.workflowSpecVersion ?? "1.0.0",
       workflowSpecId: null,
       workflowSpecHash: null,
+      executionStatus: "completed",
+      evaluationStatus: "pending",
+      completionClientId: null,
     };
 
     const events: BotRunEvent[] = data.events.map((e) => ({

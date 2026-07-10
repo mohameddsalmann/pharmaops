@@ -26,6 +26,13 @@ import type {
   BotOpsAuditLog,
 } from "@/lib/schemas/bot-run";
 import { createHash } from "crypto";
+import { evaluateBotRun } from "@/lib/botops/evaluate";
+import { createSummaryRecord } from "@/lib/botops/summarize";
+import {
+  deriveEnteredFieldsFromEvents,
+  deriveExtractedFieldsFromEvents,
+} from "@/lib/botops/event-aggregation";
+import { getExactWorkflowSpec } from "@/lib/botops/workflow-specs/registry";
 
 // ── In-Memory Queue/Mutex for Atomic Ingestion (Final Change #6) ──
 const runLocks = new Map<string, Promise<void>>();
@@ -103,6 +110,7 @@ export interface CompleteRunParams {
   status?: BotRunStatus;
   processedItemCount?: number;
   externalTaskStatus?: string;
+  completionClientId?: string;
 }
 
 export interface FailRunParams {
@@ -158,6 +166,9 @@ export async function startRun(params: StartRunParams): Promise<BotRun> {
     workflowSpecVersion: params.workflowSpecVersion ?? "1.0.0",
     workflowSpecId: null,
     workflowSpecHash: null,
+    executionStatus: "running",
+    evaluationStatus: "pending",
+    completionClientId: null,
   };
 
   await store.createRun({ run, events: [] });
@@ -185,8 +196,8 @@ export async function ingestEvent(
     if (!run) {
       throw new Error("Run not found");
     }
-    if (run.status !== "running") {
-      throw new Error(`Run is not running (status: ${run.status})`);
+    if (run.executionStatus !== "running") {
+      throw new Error(`Run is not running (executionStatus: ${run.executionStatus})`);
     }
 
     // 1. Idempotency Check (Final Change #6)
@@ -307,7 +318,14 @@ export async function addArtifact(
 }
 
 /**
- * Complete a run.
+ * Complete a run and trigger deterministic evaluation.
+ *
+ * Idempotency:
+ * - running → atomically claim completion and evaluate
+ * - completed + evaluation pending/failed → safely resume evaluation
+ * - completed + evaluation completed → return existing run and results (200)
+ * - completed + evaluation running → return 409 "Evaluation in progress"
+ * - failed/stalled → reject invalid completion
  */
 export async function completeRun(
   runId: string,
@@ -318,30 +336,194 @@ export async function completeRun(
   if (!run) {
     throw new Error("Run not found");
   }
-  if (run.status !== "running") {
-    throw new Error(`Run is not running (status: ${run.status})`);
+
+  // Reject invalid completion attempts
+  if (run.executionStatus === "failed" || run.executionStatus === "stalled") {
+    throw new Error(`Cannot complete a ${run.executionStatus} run`);
   }
 
-  const finalStatus = params.status ?? "completed";
-  const updated: BotRun = {
-    ...run,
-    completedAt: nowISO(),
-    status: finalStatus,
-    finalOutcome: params.finalOutcome,
-    processedItemCount: params.processedItemCount ?? run.processedItemCount,
-    externalTaskStatus: params.externalTaskStatus ?? run.externalTaskStatus,
-  };
+  // Idempotent: already completed + evaluation completed → return existing
+  if (run.executionStatus === "completed" && run.evaluationStatus === "completed") {
+    return run;
+  }
 
-  await store.updateRun(updated);
-  await createAuditEvent({
-    botRunId: runId,
-    actorType: "system",
-    actorName: "ingestion_service",
-    action: "run_completed",
-    details: { status: finalStatus, finalOutcome: params.finalOutcome },
-  });
+  // Idempotent: already completed + evaluation running → conflict
+  if (run.executionStatus === "completed" && run.evaluationStatus === "running") {
+    throw new Error("Evaluation in progress");
+  }
 
-  return updated;
+  // Step 1: Atomic completion claim (running → completed)
+  let completedRun: BotRun;
+  if (run.executionStatus === "running") {
+    const claimed = await store.claimCompletion(
+      runId,
+      params.completionClientId,
+      params.finalOutcome,
+      {
+        processedItemCount: params.processedItemCount ?? run.processedItemCount,
+        externalTaskStatus: params.externalTaskStatus ?? run.externalTaskStatus,
+      }
+    );
+    if (!claimed) {
+      // Another instance completed it — re-fetch and return existing
+      const refetched = await store.getRun(runId);
+      if (refetched && refetched.evaluationStatus === "completed") {
+        return refetched;
+      }
+      if (refetched && refetched.evaluationStatus === "running") {
+        throw new Error("Evaluation in progress");
+      }
+      // Evaluation pending/failed — resume with refetched run
+      if (!refetched) throw new Error("Run not found after claim");
+      completedRun = refetched;
+    } else {
+      completedRun = claimed;
+    }
+
+    await createAuditEvent({
+      botRunId: runId,
+      actorType: "system",
+      actorName: "ingestion_service",
+      action: "run_completed",
+      details: { finalOutcome: params.finalOutcome },
+    });
+  } else {
+    // executionStatus === "completed", evaluationStatus === "pending" or "failed" → resume
+    completedRun = run;
+  }
+
+  // Step 2: Deterministic evaluation (no LLM in critical path)
+  try {
+    const events = await store.getEvents(runId);
+    const enteredFields = deriveEnteredFieldsFromEvents(events);
+
+    // Load workflow spec from registry — not from external request
+    const specData = getExactWorkflowSpec(
+      completedRun.pmsType,
+      completedRun.workflowType,
+      completedRun.workflowSpecVersion
+    );
+
+    // Build expectedFields from the validated spec's requiredFields
+    // If spec not found, evaluateBotRun handles it (returns needs_qa_review)
+    // If spec hash mismatch, record integrity failure
+    let expectedFields: Record<string, string> = {};
+    if (specData) {
+      // Verify spec hash integrity
+      if (completedRun.workflowSpecHash && completedRun.workflowSpecHash !== specData.hash) {
+        // Spec hash mismatch — don't certify, record integrity failure
+        const integrityFailedRun: BotRun = {
+          ...completedRun,
+          evaluationStatus: "completed",
+          overallScore: 0,
+          riskLevel: "high",
+          decision: "needs_qa_review",
+          mainFinding: "Workflow specification hash mismatch — spec integrity failure.",
+          recommendedAction: "Do not certify. Verify workflow spec version and hash.",
+          releaseReadinessScore: 0,
+          mainRisk: "Specification integrity failure detected.",
+          recommendedEngineeringAction: "Verify that the recorded spec hash matches the registry.",
+          recommendedQaAction: "Perform manual QA; do not certify this run.",
+          workflowSpecId: specData.id,
+          workflowSpecHash: specData.hash,
+          status: "evaluated",
+        };
+        await store.updateRun(integrityFailedRun);
+        await createAuditEvent({
+          botRunId: runId,
+          actorType: "evaluator",
+          actorName: "deterministic_evaluation",
+          action: "evaluation_spec_integrity_failed",
+          details: {
+            recordedHash: completedRun.workflowSpecHash,
+            registryHash: specData.hash,
+          },
+        });
+        return integrityFailedRun;
+      }
+
+      // Build expectedFields from spec's requiredFields
+      for (const field of specData.spec.requiredFields) {
+        expectedFields[field] = completedRun.expectedFields[field] ?? "";
+      }
+    }
+
+    const baseline = await store.getBaseline(
+      completedRun.workflowType,
+      completedRun.baselineVersion ?? completedRun.botVersion
+    );
+
+    const result = await evaluateBotRun(
+      completedRun,
+      events,
+      expectedFields,
+      enteredFields,
+      baseline,
+      { useLlm: false }
+    );
+
+    // Merge: keep executionStatus="completed", set evaluationStatus="completed"
+    const finalRun: BotRun = {
+      ...result.run,
+      executionStatus: "completed",
+      evaluationStatus: "completed",
+      status: "evaluated",
+      completedAt: completedRun.completedAt,
+      finalOutcome: completedRun.finalOutcome,
+    };
+
+    await store.updateRun(finalRun);
+    await store.setEvaluatorResults(runId, result.evaluatorResults);
+    await store.setFieldComparisons(runId, result.fieldComparisons);
+    await store.setSummary(createSummaryRecord(runId, {
+      summary: result.summary,
+      reviewerNote: result.reviewerNote,
+      engineeringExplanation: result.engineeringExplanation,
+      usedLlm: result.usedLlm,
+    }));
+
+    await createAuditEvent({
+      botRunId: runId,
+      actorType: "evaluator",
+      actorName: "deterministic_evaluation",
+      action: "run_evaluated",
+      details: {
+        evaluatorCount: result.evaluatorResults.length,
+        overallScore: result.overallScore,
+        decision: result.decision,
+      },
+    });
+
+    return finalRun;
+  } catch (evalErr) {
+    // Evaluation failed — keep executionStatus="completed", set evaluationStatus="failed"
+    const sanitizedMessage = evalErr instanceof Error
+      ? evalErr.message.substring(0, 200).replace(/[\n\r]/g, " ")
+      : "Unknown evaluation error";
+
+    const failedEvalRun: BotRun = {
+      ...completedRun,
+      executionStatus: "completed",
+      evaluationStatus: "failed",
+      decision: "needs_qa_review",
+      status: "completed",
+    };
+
+    await store.updateRun(failedEvalRun);
+    await createAuditEvent({
+      botRunId: runId,
+      actorType: "evaluator",
+      actorName: "deterministic_evaluation",
+      action: "evaluation_failed",
+      details: {
+        errorCode: "EVALUATION_ERROR",
+        safeMessage: sanitizedMessage,
+        timestamp: nowISO(),
+      },
+    });
+
+    return failedEvalRun;
+  }
 }
 
 /**
@@ -356,14 +538,16 @@ export async function failRun(
   if (!run) {
     throw new Error("Run not found");
   }
-  if (run.status !== "running") {
-    throw new Error(`Run is not running (status: ${run.status})`);
+  if (run.executionStatus !== "running") {
+    throw new Error(`Run is not running (executionStatus: ${run.executionStatus})`);
   }
 
   const updated: BotRun = {
     ...run,
     completedAt: nowISO(),
     status: "failed",
+    executionStatus: "failed",
+    evaluationStatus: "pending",
     finalOutcome: `Failed: ${params.failureReason}${params.errorCode ? ` (${params.errorCode})` : ""}`,
     externalTaskStatus: "Failed",
   };

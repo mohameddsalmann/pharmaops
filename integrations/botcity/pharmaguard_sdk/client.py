@@ -223,6 +223,12 @@ class PharmaGuardRunSession:
     def run_id(self) -> str:
         return self._run_id
 
+    @property
+    def replay_url(self) -> str:
+        """Dynamically construct replay URL from client base URL."""
+        base = self._client.base_url.rstrip("/")
+        return f"{base}/runs/{self._run_id}"
+
     def _next_sequence(self) -> int:
         self._sequence += 1
         return self._sequence
@@ -489,6 +495,7 @@ class PharmaGuardRunSession:
         status: str = "completed",
         processed_item_count: Optional[int] = None,
         external_task_status: Optional[str] = None,
+        completion_client_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
             "finalOutcome": final_outcome,
@@ -498,6 +505,9 @@ class PharmaGuardRunSession:
             payload["processedItemCount"] = processed_item_count
         if external_task_status is not None:
             payload["externalTaskStatus"] = external_task_status
+        if completion_client_id is None:
+            completion_client_id = f"completion-{self._run_id}-{int(time.time())}"
+        payload["completionClientId"] = completion_client_id
 
         path = f"/api/botops/integrations/botcity/runs/{self._run_id}/complete"
         try:
@@ -539,6 +549,10 @@ class NoOpPharmaGuardRunSession:
 
     @property
     def run_id(self) -> str:
+        return ""
+
+    @property
+    def replay_url(self) -> str:
         return ""
 
     def emit_screen_read(self, *args, **kwargs) -> Dict[str, Any]:

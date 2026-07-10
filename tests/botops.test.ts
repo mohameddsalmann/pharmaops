@@ -41,6 +41,9 @@ const baseRun: BotRun = {
   workflowSpecVersion: "1.0.0",
   workflowSpecId: null,
   workflowSpecHash: null,
+  executionStatus: "completed",
+  evaluationStatus: "pending",
+  completionClientId: null,
 };
 
 function makeEvent(overrides: Partial<BotRunEvent>): BotRunEvent {

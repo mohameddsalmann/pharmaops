@@ -18,7 +18,7 @@ export function RunDetailClient({ detail }: { detail: BotRunDetail }) {
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const isLive = currentDetail.status === "running" || currentDetail.status === "evaluating";
+  const isLive = currentDetail.executionStatus === "running" || currentDetail.evaluationStatus === "running";
 
   const pollRun = useCallback(async () => {
     try {
@@ -112,14 +112,19 @@ export function RunDetailClient({ detail }: { detail: BotRunDetail }) {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-[1.75rem] font-bold tracking-tight text-white">{run.runNumber}</h1>
-            {run.status === "running" && (
+            {run.executionStatus === "running" && (
               <span className="flex items-center gap-1.5 rounded-full bg-accent-cyan/10 px-2.5 py-1 text-[10px] font-medium text-accent-cyan">
                 <Activity className="h-3 w-3 animate-pulse" /> LIVE
               </span>
             )}
-            {run.status === "evaluating" && (
+            {run.evaluationStatus === "running" && (
               <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-medium text-amber-400">
                 <Loader2 className="h-3 w-3 animate-spin" /> EVALUATING
+              </span>
+            )}
+            {run.evaluationStatus === "failed" && (
+              <span className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-1 text-[10px] font-medium text-red-400">
+                <AlertTriangle className="h-3 w-3" /> EVAL FAILED
               </span>
             )}
           </div>

@@ -39,7 +39,7 @@ export function getBotOpsSupabaseStore(): BotOpsStore | null {
       async listRuns(filters) {
         try {
           let query = client.from("botops_runs").select("*").order("started_at", { ascending: false });
-          if (filters?.status) query = query.eq("status", filters.status);
+          if (filters?.status) query = query.eq("execution_status", filters.status);
           if (filters?.workflowType) query = query.eq("workflow_type", filters.workflowType);
           if (filters?.pmsType) query = query.eq("pms_type", filters.pmsType);
           if (filters?.botVersion) query = query.eq("bot_version", filters.botVersion);
@@ -98,6 +98,41 @@ export function getBotOpsSupabaseStore(): BotOpsStore | null {
           return run;
         } catch (err) {
           return handleSupabaseError(err, () => memory.updateRun(run));
+        }
+      },
+      async claimCompletion(runId, completionClientId, finalOutcome, updates) {
+        try {
+          const row = runToRow({
+            ...({} as BotRun),
+            ...updates,
+            id: runId,
+            executionStatus: "completed",
+            completedAt: new Date().toISOString(),
+            finalOutcome,
+            evaluationStatus: "running",
+            completionClientId: completionClientId ?? null,
+            status: "completed",
+          } as BotRun);
+          const { data, error } = await client
+            .from("botops_runs")
+            .update({
+              execution_status: "completed",
+              completed_at: new Date().toISOString(),
+              final_outcome: finalOutcome,
+              evaluation_status: "running",
+              completion_client_id: completionClientId ?? null,
+              status: "completed",
+              processed_item_count: updates.processedItemCount ?? null,
+              external_task_status: updates.externalTaskStatus ?? null,
+            })
+            .eq("id", runId)
+            .eq("execution_status", "running")
+            .select();
+          if (error) throw error;
+          if (!data || data.length === 0) return null;
+          return rowToRun(data[0]);
+        } catch (err) {
+          return handleSupabaseError(err, () => memory.claimCompletion(runId, completionClientId, finalOutcome, updates));
         }
       },
       async deleteRun(runId) {

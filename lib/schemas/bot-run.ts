@@ -44,6 +44,22 @@ export const botRunStatusSchema = z.enum([
 ]);
 export type BotRunStatus = z.infer<typeof botRunStatusSchema>;
 
+export const executionStatusSchema = z.enum([
+  "running",
+  "completed",
+  "failed",
+  "stalled",
+]);
+export type ExecutionStatus = z.infer<typeof executionStatusSchema>;
+
+export const evaluationStatusSchema = z.enum([
+  "pending",
+  "running",
+  "completed",
+  "failed",
+]);
+export type EvaluationStatus = z.infer<typeof evaluationStatusSchema>;
+
 export const riskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
 export type RiskLevel = z.infer<typeof riskLevelSchema>;
 
@@ -98,6 +114,10 @@ export const botRunSchema = z.object({
   workflowSpecVersion: z.string().default("1.0.0"),
   workflowSpecId: z.string().nullable().default(null),
   workflowSpecHash: z.string().nullable().default(null),
+
+  executionStatus: executionStatusSchema.default("running"),
+  evaluationStatus: evaluationStatusSchema.default("pending"),
+  completionClientId: z.string().nullable().optional(),
 });
 export type BotRun = z.infer<typeof botRunSchema>;
 

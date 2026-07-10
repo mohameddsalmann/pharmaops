@@ -8,6 +8,7 @@ const completeRunSchema = z.object({
   status: z.enum(["completed", "stalled", "needs_human_review"]).optional(),
   processedItemCount: z.number().optional(),
   externalTaskStatus: z.string().optional(),
+  completionClientId: z.string().optional(),
 });
 
 export async function POST(

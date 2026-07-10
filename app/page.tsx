@@ -85,7 +85,21 @@ const audienceCards = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  let readiness: { status: string; checks?: Record<string, { status: string; detail?: string }> } | null = null;
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/api/readiness`, {
+      cache: "no-store",
+    });
+    if (res.ok) readiness = await res.json();
+  } catch {
+    // silent — show static fallback
+  }
+
+  const storeOk = readiness?.checks?.store?.status === "ok";
+  const supabaseConfigured = readiness?.checks?.supabase?.status === "configured";
+  const hmacConfigured = readiness?.checks?.hmac?.status === "configured";
+
   return (
     <PageFadeIn>
       {/* Asymmetric hero — 7/5 split with double-bezel accent panel */}
@@ -102,9 +116,13 @@ export default function HomePage() {
             PharmaGuard BotOps monitors, replays, evaluates, and certifies AI pharmacy bot runs across PMS systems. 7 deterministic evaluators, PHI redaction, risk scoring, and release readiness decisions — with full audit trails.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/pms-sandbox" className="btn-primary btn-lg">
+            <Link href="/integration" className="btn-primary btn-lg">
+              <Terminal className="h-5 w-5" />
+              Explore BotCity Integration
+            </Link>
+            <Link href="/pms-sandbox" className="btn-secondary btn-lg">
               <FlaskConical className="h-5 w-5" />
-              Start Live Bot Run
+              Try PMS Sandbox
             </Link>
             <Link href="/dashboard" className="btn-secondary btn-lg">
               <LayoutDashboard className="h-5 w-5" />
@@ -247,7 +265,7 @@ export default function HomePage() {
                     Integration Guide
                   </Link>
                   <Link
-                    href="https://github.com/mohameddsalmann/lail2/tree/main/integrations/botcity"
+                    href="https://github.com/mohameddsalmann/pharmaops/tree/main/integrations/botcity"
                     className="btn-secondary"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -258,17 +276,17 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="flex shrink-0 flex-col gap-2 rounded-lg border border-navy-700/60 bg-navy-900/80 p-4 font-mono-data text-xs text-slate-400">
-                <div className="flex items-center gap-2 text-status-green">
+                <div className={`flex items-center gap-2 ${storeOk ? "text-status-green" : "text-slate-500"}`}>
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  42 Python tests passing
+                  {storeOk ? "Store backend reachable" : "Store backend not checked"}
                 </div>
-                <div className="flex items-center gap-2 text-status-green">
+                <div className={`flex items-center gap-2 ${supabaseConfigured ? "text-status-green" : "text-slate-500"}`}>
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  99 TypeScript tests passing
+                  {supabaseConfigured ? "Supabase configured" : "Memory store (dev)"}
                 </div>
-                <div className="flex items-center gap-2 text-status-green">
+                <div className={`flex items-center gap-2 ${hmacConfigured ? "text-status-green" : "text-slate-500"}`}>
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  HMAC + replay protection
+                  {hmacConfigured ? "HMAC ingest key set" : "HMAC key not set"}
                 </div>
                 <div className="flex items-center gap-2 text-status-green">
                   <CheckCircle2 className="h-3.5 w-3.5" />

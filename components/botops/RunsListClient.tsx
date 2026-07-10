@@ -25,7 +25,7 @@ export function RunsListClient({ initialRuns }: { initialRuns: BotRun[] }) {
           r.finalOutcome.toLowerCase().includes(q)
       );
     }
-    if (statusFilter) runs = runs.filter((r) => r.status === statusFilter);
+    if (statusFilter) runs = runs.filter((r) => r.executionStatus === statusFilter);
     if (decisionFilter) runs = runs.filter((r) => r.decision === decisionFilter);
     if (workflowFilter) runs = runs.filter((r) => r.workflowType === workflowFilter);
     return runs.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
@@ -68,10 +68,10 @@ export function RunsListClient({ initialRuns }: { initialRuns: BotRun[] }) {
               className="mt-1 rounded border border-navy-600 bg-navy-850 px-3 py-1.5 text-sm text-slate-200 focus:border-accent-cyan focus:outline-none"
             >
               <option value="">All</option>
+              <option value="running">Running</option>
               <option value="completed">Completed</option>
               <option value="failed">Failed</option>
               <option value="stalled">Stalled</option>
-              <option value="needs_human_review">Needs Human Review</option>
             </select>
           </div>
           <div>

@@ -24,10 +24,10 @@ export function computeDashboardMetrics(
   allEvaluatorResults: Record<string, EvaluatorResult[]>
 ): DashboardMetrics {
   const totalRuns = runs.length;
-  const completedRuns = runs.filter((r) => r.status === "completed").length;
-  const failedRuns = runs.filter((r) => r.status === "failed").length;
-  const stalledRuns = runs.filter((r) => r.status === "stalled").length;
-  const needsReviewRuns = runs.filter((r) => r.status === "needs_human_review").length;
+  const completedRuns = runs.filter((r) => r.executionStatus === "completed").length;
+  const failedRuns = runs.filter((r) => r.executionStatus === "failed").length;
+  const stalledRuns = runs.filter((r) => r.executionStatus === "stalled").length;
+  const needsReviewRuns = runs.filter((r) => r.decision === "needs_qa_review").length;
 
   const safeToAutomateRuns = runs.filter((r) => r.decision === "safe_to_automate").length;
   const stopAutomationRuns = runs.filter((r) => r.decision === "stop_automation").length;

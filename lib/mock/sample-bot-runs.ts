@@ -28,6 +28,9 @@ export interface SampleBotRun {
     | "workflowSpecVersion"
     | "workflowSpecId"
     | "workflowSpecHash"
+    | "executionStatus"
+    | "evaluationStatus"
+    | "completionClientId"
   >;
   events: SampleRunEvent[];
   expectedFields: Record<string, string>;

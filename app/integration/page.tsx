@@ -97,7 +97,20 @@ const features = [
   },
 ];
 
-export default function IntegrationPage() {
+export default async function IntegrationPage() {
+  let readiness: { status: string; checks?: Record<string, { status: string; detail?: string }> } | null = null;
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/api/readiness`, {
+      cache: "no-store",
+    });
+    if (res.ok) readiness = await res.json();
+  } catch {
+    // silent fallback
+  }
+
+  const hmacConfigured = readiness?.checks?.hmac?.status === "configured";
+  const storeOk = readiness?.checks?.store?.status === "ok";
+
   return (
     <PageFadeIn>
       <section className="grid gap-6 lg:grid-cols-7">
@@ -119,7 +132,7 @@ export default function IntegrationPage() {
               Try Live Sandbox
             </Link>
             <Link
-              href="https://github.com/mohameddsalmann/lail2/tree/main/integrations/botcity"
+              href="https://github.com/mohameddsalmann/pharmaops/tree/main/integrations/botcity"
               className="btn-secondary btn-lg"
               target="_blank"
               rel="noopener noreferrer"
@@ -153,8 +166,13 @@ export default function IntegrationPage() {
                 ))}
               </div>
               <div className="mt-6 border-t border-navy-700/40 pt-4">
-                <div className="font-mono-data text-[10px] text-slate-600">
-                  pharmaguard_sdk · MIT · 42 tests passing
+                <div className={`flex items-center gap-2 font-mono-data text-[10px] ${hmacConfigured ? "text-status-green" : "text-slate-600"}`}>
+                  <CheckCircle2 className="h-3 w-3" />
+                  {hmacConfigured ? "HMAC ingest key configured" : "HMAC key not set"}
+                </div>
+                <div className={`mt-1 flex items-center gap-2 font-mono-data text-[10px] ${storeOk ? "text-status-green" : "text-slate-600"}`}>
+                  <CheckCircle2 className="h-3 w-3" />
+                  {storeOk ? "BotOps store reachable" : "Store not checked"}
                 </div>
               </div>
             </div>

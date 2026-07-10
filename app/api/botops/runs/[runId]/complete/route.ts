@@ -6,6 +6,9 @@ import { z } from "zod";
 const completeRunSchema = z.object({
   finalOutcome: z.string(),
   status: z.enum(["completed", "stalled", "needs_human_review"]).optional(),
+  processedItemCount: z.number().optional(),
+  externalTaskStatus: z.string().optional(),
+  completionClientId: z.string().optional(),
 });
 
 export async function POST(
@@ -31,6 +34,9 @@ export async function POST(
     const run = await completeRun(runId, {
       finalOutcome: body.finalOutcome,
       status: body.status,
+      processedItemCount: body.processedItemCount,
+      externalTaskStatus: body.externalTaskStatus,
+      completionClientId: body.completionClientId,
     });
 
     return NextResponse.json({ run });

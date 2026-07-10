@@ -8,8 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run --exclude tests/smoke.test.ts",
+    "test:watch": "vitest",
+    "test:smoke": "vitest run tests/smoke.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.4",

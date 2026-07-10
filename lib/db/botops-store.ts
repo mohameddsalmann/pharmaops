@@ -24,6 +24,7 @@ export interface BotOpsStore {
     events: BotRunEvent[];
   }): Promise<BotRun>;
   updateRun(run: BotRun): Promise<BotRun>;
+  claimCompletion(runId: string, completionClientId: string | undefined, finalOutcome: string, updates: Partial<BotRun>): Promise<BotRun | null>;
   deleteRun(runId: string): Promise<void>;
   getEvents(runId: string): Promise<BotRunEvent[]>;
   appendEvent(runId: string, event: BotRunEvent): Promise<void>;
@@ -61,7 +62,7 @@ export class BotOpsMemoryStore implements BotOpsStore {
   async listRuns(filters?: BotRunFilters): Promise<BotRun[]> {
     let runs = Array.from(this.runs.values());
     if (filters) {
-      if (filters.status) runs = runs.filter((r) => r.status === filters.status);
+      if (filters.status) runs = runs.filter((r) => r.executionStatus === filters.status || r.status === filters.status);
       if (filters.riskLevel) runs = runs.filter((r) => r.riskLevel === filters.riskLevel);
       if (filters.decision) runs = runs.filter((r) => r.decision === filters.decision);
       if (filters.workflowType) runs = runs.filter((r) => r.workflowType === filters.workflowType);
@@ -117,6 +118,24 @@ export class BotOpsMemoryStore implements BotOpsStore {
   async updateRun(run: BotRun): Promise<BotRun> {
     this.runs.set(run.id, run);
     return run;
+  }
+
+  async claimCompletion(runId: string, completionClientId: string | undefined, finalOutcome: string, updates: Partial<BotRun>): Promise<BotRun | null> {
+    const run = this.runs.get(runId);
+    if (!run) return null;
+    if (run.executionStatus !== "running") return null;
+    const updated: BotRun = {
+      ...run,
+      ...updates,
+      executionStatus: "completed",
+      completedAt: nowISO(),
+      finalOutcome,
+      evaluationStatus: "running",
+      completionClientId: completionClientId ?? run.completionClientId,
+      status: "completed",
+    };
+    this.runs.set(runId, updated);
+    return updated;
   }
 
   async deleteRun(runId: string): Promise<void> {
@@ -253,6 +272,9 @@ export class BotOpsMemoryStore implements BotOpsStore {
         workflowSpecVersion: "1.0.0",
         workflowSpecId: null,
         workflowSpecHash: null,
+        executionStatus: "completed",
+        evaluationStatus: "pending",
+        completionClientId: null,
       };
       this.runs.set(runId, run);
       this.events.set(
