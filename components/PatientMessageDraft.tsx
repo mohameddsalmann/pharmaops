@@ -11,7 +11,7 @@ interface PatientMessageDraftProps {
   onGenerate: (messageType: string, channel: string) => Promise<void>;
 }
 
-export function PatientMessageDraft({ draft, caseId, onGenerate }: PatientMessageDraftProps) {
+export function PatientMessageDraft({ draft, onGenerate }: PatientMessageDraftProps) {
   const [loading, setLoading] = useState(false);
   const [messageType, setMessageType] = useState("review_pending");
   const [channel, setChannel] = useState("sms");

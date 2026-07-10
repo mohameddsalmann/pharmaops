@@ -4,7 +4,6 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { scenarios, type BotScenario } from "@/lib/botops/pms-sandbox/scenarios";
 import { initialState, transition, type PmsSandboxState } from "@/lib/botops/pms-sandbox/pms-state";
-import { actionToSummary, actionToEventType } from "@/lib/botops/pms-sandbox/pms-actions";
 import { buildEventFromAction } from "@/lib/botops/pms-sandbox/event-builder";
 import { formatEventActionType } from "@/lib/utils/format";
 import {
@@ -37,7 +36,6 @@ export function PmsSandboxClient() {
   const [runId, setRunId] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
-  const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const cancelRef = useRef(false);
   const prevEventCount = useRef(0);
 
@@ -53,7 +51,6 @@ export function PmsSandboxClient() {
     if (status === "running") return;
     cancelRef.current = false;
     setStatus("running");
-    setActiveScenario(scenario.id);
     setError(null);
     setLiveEvents([]);
     setProgress({ current: 0, total: scenario.actions.length });
@@ -175,7 +172,6 @@ export function PmsSandboxClient() {
     setRunId(null);
     setProgress({ current: 0, total: 0 });
     setError(null);
-    setActiveScenario(null);
     prevEventCount.current = 0;
   };
 

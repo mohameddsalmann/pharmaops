@@ -1,13 +1,35 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { getSeededBotOpsStore } from "@/lib/db/botops-index";
 import { PageFadeIn } from "@/components/motion/PageFadeIn";
 import { PageHeader } from "@/components/PageHeader";
 import { BotRunTable } from "@/components/botops/BotRunTable";
 import { TrendingUp, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { DatabaseErrorState } from "@/components/DatabaseErrorState";
 
 export default async function DriftPage() {
-  const store = await getSeededBotOpsStore();
-  const allRuns = await store.listRuns();
+  let allRuns: import("@/lib/schemas/bot-run").BotRun[] = [];
+  let dbError = false;
+  let store: import("@/lib/db/botops-store").BotOpsStore | null = null;
+
+  try {
+    store = await getSeededBotOpsStore();
+    allRuns = await store.listRuns();
+  } catch (err) {
+    console.error("[drift] Database error:", err);
+    dbError = true;
+  }
+
+  if (dbError) {
+    return (
+      <PageFadeIn>
+        <PageHeader title="UI Drift Detection" description="Bot runs where screen recognition or UI selectors may have drifted" />
+        <DatabaseErrorState />
+      </PageFadeIn>
+    );
+  }
 
   const driftRuns = allRuns.filter(
     (r) => r.decision === "ui_drift_detected" || r.decision === "stop_automation"
@@ -22,7 +44,7 @@ export default async function DriftPage() {
   }> = [];
 
   for (const run of driftRuns) {
-    const results = await store.getEvaluatorResults(run.id);
+    const results = await store!.getEvaluatorResults(run.id);
     const uiDriftResult = results.find((r) => r.evaluatorName === "ui_drift" && r.status !== "passed");
     if (uiDriftResult) {
       driftFindings.push({

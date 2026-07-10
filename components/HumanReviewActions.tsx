@@ -10,7 +10,7 @@ interface HumanReviewActionsProps {
   onAction: (action: string, note: string) => Promise<void>;
 }
 
-export function HumanReviewActions({ caseId, caseStatus, onAction }: HumanReviewActionsProps) {
+export function HumanReviewActions({ onAction }: HumanReviewActionsProps) {
   const { roleInfo } = useRole();
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);

@@ -261,6 +261,8 @@ alter table botops_runs add column if not exists automation_label text;
 alter table botops_runs add column if not exists runner_id text;
 alter table botops_runs add column if not exists external_task_status text;
 alter table botops_runs add column if not exists processed_item_count integer;
+alter table botops_runs add column if not exists expected_fields jsonb not null default '{}';
+alter table botops_runs add column if not exists correlation_id text;
 
 -- Add missing columns to botops_events (idempotent)
 alter table botops_events add column if not exists client_event_id text;
@@ -300,7 +302,10 @@ create unique index if not exists idx_botops_events_run_client_event
 -- Additional indexes
 create index if not exists idx_botops_runs_external_task_id on botops_runs(external_task_id);
 create index if not exists idx_botops_runs_created_at on botops_runs(created_at);
+create index if not exists idx_botops_runs_completed_at on botops_runs(completed_at);
+create index if not exists idx_botops_runs_correlation_id on botops_runs(correlation_id);
 create index if not exists idx_botops_events_client_event_id on botops_events(client_event_id);
+create index if not exists idx_botops_events_bot_run_step on botops_events(bot_run_id, step_number);
 create index if not exists idx_botops_artifacts_run_id on botops_artifacts(run_id);
 
 -- BotOps RLS for artifacts
@@ -338,4 +343,10 @@ create policy "botops_qa_review_actions_all" on botops_qa_review_actions for all
 create policy "botops_audit_logs_all" on botops_audit_logs for all using (true) with check (true);
 create policy "botops_summaries_all" on botops_summaries for all using (true) with check (true);
 create policy "botops_regression_baselines_all" on botops_regression_baselines for all using (true) with check (true);
+
+-- ────────────────────────────────────────────────────────────
+-- Refresh PostgREST schema cache so new tables/columns are
+-- immediately visible (resolves PGRST205 errors).
+-- ────────────────────────────────────────────────────────────
+NOTIFY pgrst, 'reload schema';
 

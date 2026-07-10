@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { getSeededBotOpsStore } from "@/lib/db/botops-index";
 import { PageHeader } from "@/components/PageHeader";
 import { PageFadeIn } from "@/components/motion/PageFadeIn";
@@ -5,13 +8,13 @@ import { Upload, Lock } from "lucide-react";
 import Link from "next/link";
 import { RunsListClient } from "@/components/botops/RunsListClient";
 import { isProduction } from "@/lib/utils/env";
+import { DatabaseErrorState } from "@/components/DatabaseErrorState";
 
 export default async function RunsPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const store = await getSeededBotOpsStore();
   const params = await searchParams;
 
   const filters: import("@/lib/schemas/bot-run").BotRunFilters = {};
@@ -23,7 +26,25 @@ export default async function RunsPage({
   if (params.search) filters.search = String(params.search);
   if (params.needsReview === "true") filters.needsReview = true;
 
-  const runs = await store.listRuns(filters);
+  let runs: import("@/lib/schemas/bot-run").BotRun[] = [];
+  let dbError = false;
+
+  try {
+    const store = await getSeededBotOpsStore();
+    runs = await store.listRuns(filters);
+  } catch (err) {
+    console.error("[runs] Database error:", err);
+    dbError = true;
+  }
+
+  if (dbError) {
+    return (
+      <PageFadeIn>
+        <PageHeader title="Bot Runs" description="Browse and evaluate pharmacy automation bot runs" />
+        <DatabaseErrorState />
+      </PageFadeIn>
+    );
+  }
 
   return (
     <PageFadeIn>

@@ -1,4 +1,4 @@
-import type { Case, PrescriptionInput, CaseStatus } from "@/lib/schemas/case";
+import type { Case, PrescriptionInput } from "@/lib/schemas/case";
 import type { AgentRun, EvidenceItem, ExceptionItem } from "@/lib/schemas/agents";
 import type { ReviewAction } from "@/lib/schemas/review";
 import type { AuditLog } from "@/lib/schemas/audit";

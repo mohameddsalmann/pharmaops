@@ -293,54 +293,116 @@ export function getBotOpsSupabaseStore(): BotOpsStore | null {
   }
 }
 
+// ── snake_case ↔ camelCase conversion utilities ──
+
+function snakeToCamel(s: string): string {
+  return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function camelToSnake(s: string): string {
+  return s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+}
+
+function convertRow<T>(row: Record<string, unknown>): T {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(row)) {
+    result[snakeToCamel(key)] = value;
+  }
+  return result as T;
+}
+
+function convertObj(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[camelToSnake(key)] = value;
+    }
+  }
+  return result;
+}
+
+// ── Run mappers ──
+
 function rowToRun(row: Record<string, unknown>): BotRun {
-  return row as unknown as BotRun;
+  return convertRow<BotRun>(row);
 }
+
 function runToRow(run: BotRun): Record<string, unknown> {
-  return run as unknown as Record<string, unknown>;
+  return convertObj(run as unknown as Record<string, unknown>);
 }
+
+// ── Event mappers ──
+
 function rowToEvent(row: Record<string, unknown>): BotRunEvent {
-  return row as unknown as BotRunEvent;
+  return convertRow<BotRunEvent>(row);
 }
+
 function eventToRow(event: BotRunEvent): Record<string, unknown> {
-  return event as unknown as Record<string, unknown>;
+  return convertObj(event as unknown as Record<string, unknown>);
 }
+
+// ── Evaluator result mappers ──
+
 function rowToEvaluatorResult(row: Record<string, unknown>): EvaluatorResult {
-  return row as unknown as EvaluatorResult;
+  return convertRow<EvaluatorResult>(row);
 }
+
 function evaluatorResultToRow(r: EvaluatorResult): Record<string, unknown> {
-  return r as unknown as Record<string, unknown>;
+  return convertObj(r as unknown as Record<string, unknown>);
 }
+
+// ── Field comparison mappers ──
+
 function rowToFieldComparison(row: Record<string, unknown>): FieldComparison {
-  return row as unknown as FieldComparison;
+  return convertRow<FieldComparison>(row);
 }
+
 function fieldComparisonToRow(fc: FieldComparison): Record<string, unknown> {
-  return fc as unknown as Record<string, unknown>;
+  return convertObj(fc as unknown as Record<string, unknown>);
 }
+
+// ── QA review action mappers ──
+
 function rowToQaReviewAction(row: Record<string, unknown>): QaReviewAction {
-  return row as unknown as QaReviewAction;
+  return convertRow<QaReviewAction>(row);
 }
+
 function qaReviewActionToRow(a: QaReviewAction): Record<string, unknown> {
-  return a as unknown as Record<string, unknown>;
+  return convertObj(a as unknown as Record<string, unknown>);
 }
+
+// ── Audit log mappers ──
+
 function rowToAuditLog(row: Record<string, unknown>): BotOpsAuditLog {
-  return row as unknown as BotOpsAuditLog;
+  return convertRow<BotOpsAuditLog>(row);
 }
+
 function auditLogToRow(l: BotOpsAuditLog): Record<string, unknown> {
-  return l as unknown as Record<string, unknown>;
+  return convertObj(l as unknown as Record<string, unknown>);
 }
+
+// ── Summary mappers ──
+
 function rowToSummary(row: Record<string, unknown>): BotRunSummary {
-  return row as unknown as BotRunSummary;
+  return convertRow<BotRunSummary>(row);
 }
+
 function summaryToRow(s: BotRunSummary): Record<string, unknown> {
-  return s as unknown as Record<string, unknown>;
+  return convertObj(s as unknown as Record<string, unknown>);
 }
+
+// ── Baseline mappers ──
+
 function rowToBaseline(row: Record<string, unknown>): RegressionBaseline {
-  return row as unknown as RegressionBaseline;
+  return convertRow<RegressionBaseline>(row);
 }
+
+// ── Artifact mappers ──
+
 function rowToArtifact(row: Record<string, unknown>): RunArtifact {
-  return row as unknown as RunArtifact;
+  return convertRow<RunArtifact>(row);
 }
+
 function artifactToRow(a: RunArtifact): Record<string, unknown> {
-  return a as unknown as Record<string, unknown>;
+  return convertObj(a as unknown as Record<string, unknown>);
 }

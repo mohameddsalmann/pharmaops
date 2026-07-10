@@ -1,13 +1,36 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { getSeededBotOpsStore } from "@/lib/db/botops-index";
 import { PageHeader } from "@/components/PageHeader";
 import { PageFadeIn } from "@/components/motion/PageFadeIn";
 import { MetricCard } from "@/components/MetricCard";
 import { ScrollText, Bot, User, Settings } from "lucide-react";
 import Link from "next/link";
+import { DatabaseErrorState } from "@/components/DatabaseErrorState";
 
 export default async function AuditPage() {
-  const store = await getSeededBotOpsStore();
-  const logs = await store.getAuditLogs();
+  let logs: import("@/lib/schemas/bot-run").BotOpsAuditLog[] = [];
+  let dbError = false;
+
+  try {
+    const store = await getSeededBotOpsStore();
+    logs = await store.getAuditLogs();
+  } catch (err) {
+    console.error("[audit] Database error:", err);
+    dbError = true;
+  }
+
+  if (dbError) {
+    return (
+      <div>
+        <PageHeader title="BotOps Audit Log" description="Complete audit trail of all evaluations, QA reviews, imports, and system actions" />
+        <PageFadeIn>
+          <DatabaseErrorState />
+        </PageFadeIn>
+      </div>
+    );
+  }
 
   const evaluatorLogs = logs.filter((l) => l.actorType === "evaluator");
   const humanLogs = logs.filter((l) => l.actorType === "human");

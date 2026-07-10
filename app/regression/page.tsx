@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { getSeededBotOpsStore } from "@/lib/db/botops-index";
 import { PageFadeIn } from "@/components/motion/PageFadeIn";
 import { PageHeader } from "@/components/PageHeader";
@@ -5,11 +8,31 @@ import { BotRunTable } from "@/components/botops/BotRunTable";
 import { formatWorkflowType } from "@/lib/utils/format";
 import { GitCompare, TrendingDown } from "lucide-react";
 import Link from "next/link";
+import { DatabaseErrorState } from "@/components/DatabaseErrorState";
 
 export default async function RegressionPage() {
-  const store = await getSeededBotOpsStore();
-  const allRuns = await store.listRuns();
-  const baselines = await store.getBaselines();
+  let allRuns: import("@/lib/schemas/bot-run").BotRun[] = [];
+  let baselines: import("@/lib/schemas/bot-run").RegressionBaseline[] = [];
+  let dbError = false;
+  let store: import("@/lib/db/botops-store").BotOpsStore | null = null;
+
+  try {
+    store = await getSeededBotOpsStore();
+    allRuns = await store.listRuns();
+    baselines = await store.getBaselines();
+  } catch (err) {
+    console.error("[regression] Database error:", err);
+    dbError = true;
+  }
+
+  if (dbError) {
+    return (
+      <PageFadeIn>
+        <PageHeader title="Regression Detection" description="Compare bot run performance against captured baselines" />
+        <DatabaseErrorState />
+      </PageFadeIn>
+    );
+  }
 
   const regressionRuns = allRuns.filter(
     (r) => r.decision === "regression_detected" || r.decision === "stop_automation"
@@ -25,7 +48,7 @@ export default async function RegressionPage() {
   }> = [];
 
   for (const run of regressionRuns) {
-    const results = await store.getEvaluatorResults(run.id);
+    const results = await store!.getEvaluatorResults(run.id);
     const regressionResult = results.find((r) => r.evaluatorName === "regression" && r.status !== "passed");
     if (regressionResult) {
       regressionFindings.push({

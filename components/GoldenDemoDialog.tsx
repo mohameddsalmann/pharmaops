@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlayCircle, Loader2, CheckCircle2, XCircle, ShieldCheck, FileText, AlertTriangle, ScrollText } from "lucide-react";
+import { PlayCircle, Loader2, CheckCircle2, ShieldCheck, FileText, AlertTriangle, ScrollText } from "lucide-react";
 
 interface GoldenDemoResult {
   success: boolean;

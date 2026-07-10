@@ -27,10 +27,17 @@ export async function getBotOpsStore(): Promise<BotOpsStore> {
         g._botOpsStore = supaStore as BotOpsStore;
         return g._botOpsStore;
       }
-    } catch {
-      // fall through to memory store
+    } catch (err) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("Supabase store initialization failed in production: " + String(err));
+      }
     }
   }
+
+  if (process.env.NODE_ENV === "production" && isSupabaseConfigured(cfg)) {
+    throw new Error("Supabase is configured but store creation returned null. Check SUPABASE_SERVICE_ROLE_KEY and schema.");
+  }
+
   g._botOpsStore = getBotOpsMemoryStore();
   return g._botOpsStore;
 }

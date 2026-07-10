@@ -46,7 +46,7 @@ export function loadKnowledgeBase(): KnowledgeDoc[] {
 
 export function retrieveEvidence(
   keywords: string[],
-  agentName: string
+  _agentName: string
 ): RetrievedSnippet[] {
   const docs = loadKnowledgeBase();
   const results: RetrievedSnippet[] = [];

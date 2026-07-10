@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { getSeededBotOpsStore } from "@/lib/db/botops-index";
 import { computeDashboardMetrics } from "@/lib/botops/metrics";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,14 +10,32 @@ import { PageFadeIn } from "@/components/motion/PageFadeIn";
 import { Upload, CheckCircle2, AlertTriangle, Gauge, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { formatEvaluatorName, formatQaDecision } from "@/lib/utils/format";
+import { DatabaseErrorState } from "@/components/DatabaseErrorState";
 
 export default async function DashboardPage() {
-  const store = await getSeededBotOpsStore();
-  const runs = await store.listRuns();
-
+  let runs: import("@/lib/schemas/bot-run").BotRun[] = [];
   const allEvaluatorResults: Record<string, import("@/lib/schemas/bot-run").EvaluatorResult[]> = {};
-  for (const run of runs) {
-    allEvaluatorResults[run.id] = await store.getEvaluatorResults(run.id);
+  let dbError = false;
+
+  try {
+    const store = await getSeededBotOpsStore();
+    runs = await store.listRuns();
+
+    for (const run of runs) {
+      allEvaluatorResults[run.id] = await store.getEvaluatorResults(run.id);
+    }
+  } catch (err) {
+    console.error("[dashboard] Database error:", err);
+    dbError = true;
+  }
+
+  if (dbError) {
+    return (
+      <PageFadeIn>
+        <PageHeader title="BotOps Dashboard" description="Monitor bot run evaluations, release readiness, and evaluator health" />
+        <DatabaseErrorState />
+      </PageFadeIn>
+    );
   }
 
   const metrics = computeDashboardMetrics(runs, allEvaluatorResults);

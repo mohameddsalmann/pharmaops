@@ -15,7 +15,6 @@ export interface Metrics {
   topExceptionType: string | null;
 }
 
-const MANUAL_CASE_MINUTES = 5;
 const AI_APPROVED_SAVES = 4;
 const HUMAN_REVIEW_SAVES = 2;
 const LABOR_COST_PER_HOUR = 25;

@@ -1,14 +1,36 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { getSeededBotOpsStore } from "@/lib/db/botops-index";
 import { PageFadeIn } from "@/components/motion/PageFadeIn";
 import { PageHeader } from "@/components/PageHeader";
 import { BotRunTable } from "@/components/botops/BotRunTable";
 import { ClipboardCheck } from "lucide-react";
+import { DatabaseErrorState } from "@/components/DatabaseErrorState";
 
 export default async function QaReviewPage() {
-  const store = await getSeededBotOpsStore();
-  const runs = await store.listRuns({ needsReview: true });
+  let runs: import("@/lib/schemas/bot-run").BotRun[] = [];
+  let allActions: import("@/lib/schemas/bot-run").BotOpsAuditLog[] = [];
+  let dbError = false;
 
-  const allActions = await store.getAuditLogs();
+  try {
+    const store = await getSeededBotOpsStore();
+    runs = await store.listRuns({ needsReview: true });
+    allActions = await store.getAuditLogs();
+  } catch (err) {
+    console.error("[qa-review] Database error:", err);
+    dbError = true;
+  }
+
+  if (dbError) {
+    return (
+      <PageFadeIn>
+        <PageHeader title="QA Review Queue" description="Bot runs that need human review before release" />
+        <DatabaseErrorState />
+      </PageFadeIn>
+    );
+  }
+
   const reviewActions = allActions.filter((l) => l.action.startsWith("qa_review_"));
 
   return (

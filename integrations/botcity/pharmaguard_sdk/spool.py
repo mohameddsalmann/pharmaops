@@ -30,24 +30,32 @@ class SpoolStore:
         return self._local.conn
 
     def _init_db(self) -> None:
-        conn = self._get_conn()
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id TEXT NOT NULL,
-                client_event_id TEXT NOT NULL,
-                sequence_number INTEGER NOT NULL,
-                payload TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TEXT NOT NULL,
-                UNIQUE(client_event_id)
-            )
-        """)
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_events_run_status
-            ON events(run_id, status)
-        """)
-        conn.commit()
+        for attempt in range(10):
+            try:
+                conn = self._get_conn()
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        run_id TEXT NOT NULL,
+                        client_event_id TEXT NOT NULL,
+                        sequence_number INTEGER NOT NULL,
+                        payload TEXT NOT NULL,
+                        status TEXT DEFAULT 'pending',
+                        created_at TEXT NOT NULL,
+                        UNIQUE(client_event_id)
+                    )
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_events_run_status
+                    ON events(run_id, status)
+                """)
+                conn.commit()
+                return
+            except sqlite3.OperationalError:
+                if attempt < 9:
+                    time.sleep(0.1 * (attempt + 1))
+                else:
+                    raise
 
     def append_event(self, event_payload: Dict[str, Any]) -> None:
         """Insert event, deduplicating by client_event_id (INSERT OR IGNORE)."""
@@ -55,12 +63,20 @@ class SpoolStore:
         seq = event_payload.get("sequenceNumber") or event_payload.get("stepNumber") or 0
         payload_json = json.dumps(event_payload)
         created_at = str(time.time())
-        conn = self._get_conn()
-        conn.execute(
-            "INSERT OR IGNORE INTO events (run_id, client_event_id, sequence_number, payload, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
-            (self.run_id, client_event_id, seq, payload_json, created_at),
-        )
-        conn.commit()
+        for attempt in range(10):
+            try:
+                conn = self._get_conn()
+                conn.execute(
+                    "INSERT OR IGNORE INTO events (run_id, client_event_id, sequence_number, payload, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
+                    (self.run_id, client_event_id, seq, payload_json, created_at),
+                )
+                conn.commit()
+                return
+            except sqlite3.OperationalError:
+                if attempt < 9:
+                    time.sleep(0.1 * (attempt + 1))
+                else:
+                    raise
 
     def read_pending_events(self) -> List[Dict[str, Any]]:
         """Read pending events ordered by sequence_number."""
