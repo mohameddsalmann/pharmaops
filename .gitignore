@@ -1,0 +1,28 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+dist/
+.vercel/
+
+# Python
+**/__pycache__/
+.pytest_cache/
+.venv/
+venv/
+*.pyc
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Unrelated directories
+skills devin/
+
+# Misc
+claude-fable-5.md

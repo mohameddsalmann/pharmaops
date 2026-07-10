@@ -1,0 +1,22 @@
+[
+  {
+    "method": "POST",
+    "path": "/api/botops/integrations/botcity/runs/start",
+    "timestamp": "1720000000",
+    "nonce": "test-nonce-abc-123",
+    "body": "{\"pharmacyId\":\"PH001\",\"workflowSpecVersion\":\"1.0.0\"}",
+    "bodyHash": "143367524eab2ddfcecb9a4f73913939c7e7e0594c9099b9d23275fffe55022d",
+    "key": "test-secret-key-32-bytes-long!!!",
+    "signature": "25ac17968a93fb83352ccb173b9cb7a4b19fc8e7f04d8d36e9a106376f5415d0"
+  },
+  {
+    "method": "POST",
+    "path": "/api/botops/integrations/botcity/runs/run-123/events",
+    "timestamp": "1720000100",
+    "nonce": "test-nonce-def-456",
+    "body": "{\"stepNumber\":1,\"screenName\":\"Patient Search\",\"actionType\":\"screen_read\",\"confidence\":0.95}",
+    "bodyHash": "fae4f20f76969a7d760dcc93266ad64733d7a57980dc05eb6a85d971fe62ad29",
+    "key": "test-secret-key-32-bytes-long!!!",
+    "signature": "0c6941f5e7abf31452fbcc5a1ca5e3aad6b60bebaedbb45904a98487ffca4ad7"
+  }
+]
