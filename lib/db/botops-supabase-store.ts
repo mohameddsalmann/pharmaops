@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getBotOpsConfig, isSupabaseConfigured } from "@/lib/botops/config";
 import { getBotOpsMemoryStore } from "@/lib/db/botops-store";
 import type { BotOpsStore } from "@/lib/db/botops-store";
+import { generateId, nowISO } from "@/lib/utils/id";
 import type {
   BotRun,
   BotRunEvent,
@@ -208,7 +209,7 @@ export function getBotOpsSupabaseStore(): BotOpsStore | null {
       },
       async addQaReviewAction(action) {
         try {
-          const row = qaReviewActionToRow({ ...action, id: "", createdAt: "" });
+          const row = qaReviewActionToRow({ ...action, id: generateId(), createdAt: nowISO() });
           const { data, error } = await client.from("botops_qa_review_actions").insert(row).select().single();
           if (error) throw error;
           return rowToQaReviewAction(data);
@@ -229,7 +230,7 @@ export function getBotOpsSupabaseStore(): BotOpsStore | null {
       },
       async addAuditLog(log) {
         try {
-          const row = auditLogToRow({ ...log, id: "", createdAt: "" });
+          const row = auditLogToRow({ ...log, id: generateId(), createdAt: nowISO() });
           const { data, error } = await client.from("botops_audit_logs").insert(row).select().single();
           if (error) throw error;
           return rowToAuditLog(data);
