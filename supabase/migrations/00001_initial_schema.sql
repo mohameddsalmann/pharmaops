@@ -393,6 +393,16 @@ DO $$ BEGIN
 END $$;
 
 -- ────────────────────────────────────────────────────────────
+-- Grant base table/sequence privileges to service_role and anon.
+-- RLS policies control row-level access, but base GRANTs are
+-- still required for the roles to access the tables at all.
+-- ────────────────────────────────────────────────────────────
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO service_role, anon;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO service_role, anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO service_role, anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO service_role, anon;
+
+-- ────────────────────────────────────────────────────────────
 -- Refresh PostgREST schema cache so new tables/columns are
 -- immediately visible (resolves PGRST205 errors).
 -- ────────────────────────────────────────────────────────────
